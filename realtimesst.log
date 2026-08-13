@@ -1,0 +1,396 @@
+2026-08-13 23:08:38.047 - RealTimeSTT: realtimestt - INFO - Starting RealTimeSTT
+2026-08-13 23:08:38.058 - RealTimeSTT: realtimestt - INFO - Initializing audio recording (creating pyAudio input stream, sample rate: 16000 buffer size: 512
+2026-08-13 23:08:38.064 - RealTimeSTT: realtimestt - INFO - Initializing WebRTC voice with Sensitivity 3
+2026-08-13 23:08:38.064 - RealTimeSTT: realtimestt - DEBUG - WebRTC VAD voice activity detection engine initialized successfully
+2026-08-13 23:08:38.066 - RealTimeSTT: realtimestt - DEBUG - Silero VAD auto backend raw_onnx_ifless unavailable
+Traceback (most recent call last):
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 176, in _create_auto_vad
+    return _create_raw_onnx_vad(
+        model_name,
+    ...<4 lines>...
+        chunk_samples,
+    )
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 225, in _create_raw_onnx_vad
+    raise SileroVadError(
+    ...<3 lines>...
+    )
+RealtimeSTT.core.silero_vad.SileroVadError: Could not find silero_vad_op18_ifless.onnx in the installed silero_vad package or the local torch hub cache. Install 'silero-vad' or pass silero_onnx_model_path.
+2026-08-13 23:08:38.070 - RealTimeSTT: realtimestt - DEBUG - Silero VAD auto backend raw_onnx unavailable
+Traceback (most recent call last):
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 176, in _create_auto_vad
+    return _create_raw_onnx_vad(
+        model_name,
+    ...<4 lines>...
+        chunk_samples,
+    )
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 225, in _create_raw_onnx_vad
+    raise SileroVadError(
+    ...<3 lines>...
+    )
+RealtimeSTT.core.silero_vad.SileroVadError: Could not find silero_vad.onnx in the installed silero_vad package or the local torch hub cache. Install 'silero-vad' or pass silero_onnx_model_path.
+2026-08-13 23:08:42.476 - RealTimeSTT: realtimestt - INFO - Starting RealTimeSTT
+2026-08-13 23:10:42.608 - RealTimeSTT: realtimestt - ERROR - Error initializing Silero VAD voice activity detection engine: Could not initialize any automatic Silero VAD backend. Tried: raw_onnx_ifless: Could not find silero_vad_op18_ifless.onnx in the installed silero_vad package or the local torch hub cache. Install 'silero-vad' or pass silero_onnx_model_path.; raw_onnx: Could not find silero_vad.onnx in the installed silero_vad package or the local torch hub cache. Install 'silero-vad' or pass silero_onnx_model_path.; pytorch_cpu: Unrecognized response python main.py.
+Traceback (most recent call last):
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 287, in _create_pytorch_vad
+    loaded = _load_silero_package_model(onnx=False)
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 303, in _load_silero_package_model
+    module = import_module("silero_vad")
+  File "C:\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'silero_vad'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 195, in _create_auto_vad
+    return _create_pytorch_vad("cpu")
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 289, in _create_pytorch_vad
+    loaded = _load_torch_hub_model(onnx=False)
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 319, in _load_torch_hub_model
+    loaded = torch.hub.load(
+        repo_or_dir="snakers4/silero-vad",
+    ...<2 lines>...
+        onnx=onnx,
+    )
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\torch\hub.py", line 661, in load
+    repo_or_dir = _get_cache_or_reload(
+        repo_or_dir,
+    ...<3 lines>...
+        skip_validation=skip_validation,
+    )
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\torch\hub.py", line 291, in _get_cache_or_reload
+    _check_repo_is_trusted(
+    ~~~~~~~~~~~~~~~~~~~~~~^
+        repo_owner,
+        ^^^^^^^^^^^
+    ...<2 lines>...
+        trust_repo=trust_repo,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\torch\hub.py", line 386, in _check_repo_is_trusted
+    raise ValueError(f"Unrecognized response {response}.")
+ValueError: Unrecognized response python main.py.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\initialization.py", line 558, in _initialize_voice_activity_detection
+    recorder.silero_vad_model = create_silero_vad_model(
+                                ~~~~~~~~~~~~~~~~~~~~~~~^
+        backend=silero_backend,
+        ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+        logger=logger,
+        ^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 114, in create_silero_vad_model
+    return _create_auto_vad(
+        onnx_model_path=onnx_model_path,
+    ...<3 lines>...
+        logger=log,
+    )
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 198, in _create_auto_vad
+    raise SileroVadError(
+    ...<2 lines>...
+    )
+RealtimeSTT.core.silero_vad.SileroVadError: Could not initialize any automatic Silero VAD backend. Tried: raw_onnx_ifless: Could not find silero_vad_op18_ifless.onnx in the installed silero_vad package or the local torch hub cache. Install 'silero-vad' or pass silero_onnx_model_path.; raw_onnx: Could not find silero_vad.onnx in the installed silero_vad package or the local torch hub cache. Install 'silero-vad' or pass silero_onnx_model_path.; pytorch_cpu: Unrecognized response python main.py.
+2026-08-13 23:12:52.776 - RealTimeSTT: realtimestt - INFO - Starting RealTimeSTT
+2026-08-13 23:12:52.785 - RealTimeSTT: realtimestt - INFO - Initializing audio recording (creating pyAudio input stream, sample rate: 16000 buffer size: 512
+2026-08-13 23:12:52.789 - RealTimeSTT: realtimestt - INFO - Initializing WebRTC voice with Sensitivity 3
+2026-08-13 23:12:52.789 - RealTimeSTT: realtimestt - DEBUG - WebRTC VAD voice activity detection engine initialized successfully
+2026-08-13 23:12:52.791 - RealTimeSTT: realtimestt - DEBUG - Silero VAD auto backend raw_onnx_ifless unavailable
+Traceback (most recent call last):
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 176, in _create_auto_vad
+    return _create_raw_onnx_vad(
+        model_name,
+    ...<4 lines>...
+        chunk_samples,
+    )
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 225, in _create_raw_onnx_vad
+    raise SileroVadError(
+    ...<3 lines>...
+    )
+RealtimeSTT.core.silero_vad.SileroVadError: Could not find silero_vad_op18_ifless.onnx in the installed silero_vad package or the local torch hub cache. Install 'silero-vad' or pass silero_onnx_model_path.
+2026-08-13 23:12:52.793 - RealTimeSTT: realtimestt - DEBUG - Silero VAD auto backend raw_onnx unavailable
+Traceback (most recent call last):
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 176, in _create_auto_vad
+    return _create_raw_onnx_vad(
+        model_name,
+    ...<4 lines>...
+        chunk_samples,
+    )
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 225, in _create_raw_onnx_vad
+    raise SileroVadError(
+    ...<3 lines>...
+    )
+RealtimeSTT.core.silero_vad.SileroVadError: Could not find silero_vad.onnx in the installed silero_vad package or the local torch hub cache. Install 'silero-vad' or pass silero_onnx_model_path.
+2026-08-13 23:13:46.495 - RealTimeSTT: realtimestt - ERROR - Error initializing Silero VAD voice activity detection engine: Could not initialize any automatic Silero VAD backend. Tried: raw_onnx_ifless: Could not find silero_vad_op18_ifless.onnx in the installed silero_vad package or the local torch hub cache. Install 'silero-vad' or pass silero_onnx_model_path.; raw_onnx: Could not find silero_vad.onnx in the installed silero_vad package or the local torch hub cache. Install 'silero-vad' or pass silero_onnx_model_path.; pytorch_cpu: Untrusted repository.
+Traceback (most recent call last):
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 287, in _create_pytorch_vad
+    loaded = _load_silero_package_model(onnx=False)
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 303, in _load_silero_package_model
+    module = import_module("silero_vad")
+  File "C:\Python313\Lib\importlib\__init__.py", line 88, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+           ~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<frozen importlib._bootstrap>", line 1387, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1360, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1324, in _find_and_load_unlocked
+ModuleNotFoundError: No module named 'silero_vad'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 195, in _create_auto_vad
+    return _create_pytorch_vad("cpu")
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 289, in _create_pytorch_vad
+    loaded = _load_torch_hub_model(onnx=False)
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 319, in _load_torch_hub_model
+    loaded = torch.hub.load(
+        repo_or_dir="snakers4/silero-vad",
+    ...<2 lines>...
+        onnx=onnx,
+    )
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\torch\hub.py", line 661, in load
+    repo_or_dir = _get_cache_or_reload(
+        repo_or_dir,
+    ...<3 lines>...
+        skip_validation=skip_validation,
+    )
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\torch\hub.py", line 291, in _get_cache_or_reload
+    _check_repo_is_trusted(
+    ~~~~~~~~~~~~~~~~~~~~~~^
+        repo_owner,
+        ^^^^^^^^^^^
+    ...<2 lines>...
+        trust_repo=trust_repo,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\torch\hub.py", line 384, in _check_repo_is_trusted
+    raise Exception("Untrusted repository.")  # noqa: TRY002
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Exception: Untrusted repository.
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\initialization.py", line 558, in _initialize_voice_activity_detection
+    recorder.silero_vad_model = create_silero_vad_model(
+                                ~~~~~~~~~~~~~~~~~~~~~~~^
+        backend=silero_backend,
+        ^^^^^^^^^^^^^^^^^^^^^^^
+    ...<5 lines>...
+        logger=logger,
+        ^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 114, in create_silero_vad_model
+    return _create_auto_vad(
+        onnx_model_path=onnx_model_path,
+    ...<3 lines>...
+        logger=log,
+    )
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 198, in _create_auto_vad
+    raise SileroVadError(
+    ...<2 lines>...
+    )
+RealtimeSTT.core.silero_vad.SileroVadError: Could not initialize any automatic Silero VAD backend. Tried: raw_onnx_ifless: Could not find silero_vad_op18_ifless.onnx in the installed silero_vad package or the local torch hub cache. Install 'silero-vad' or pass silero_onnx_model_path.; raw_onnx: Could not find silero_vad.onnx in the installed silero_vad package or the local torch hub cache. Install 'silero-vad' or pass silero_onnx_model_path.; pytorch_cpu: Untrusted repository.
+2026-08-13 23:17:22.587 - RealTimeSTT: realtimestt - INFO - Starting RealTimeSTT
+2026-08-13 23:17:22.595 - RealTimeSTT: realtimestt - INFO - Initializing audio recording (creating pyAudio input stream, sample rate: 16000 buffer size: 512
+2026-08-13 23:17:22.600 - RealTimeSTT: realtimestt - INFO - Initializing WebRTC voice with Sensitivity 3
+2026-08-13 23:17:22.600 - RealTimeSTT: realtimestt - DEBUG - WebRTC VAD voice activity detection engine initialized successfully
+2026-08-13 23:17:22.601 - RealTimeSTT: realtimestt - DEBUG - Silero VAD auto backend raw_onnx_ifless unavailable
+Traceback (most recent call last):
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 176, in _create_auto_vad
+    return _create_raw_onnx_vad(
+        model_name,
+    ...<4 lines>...
+        chunk_samples,
+    )
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 225, in _create_raw_onnx_vad
+    raise SileroVadError(
+    ...<3 lines>...
+    )
+RealtimeSTT.core.silero_vad.SileroVadError: Could not find silero_vad_op18_ifless.onnx in the installed silero_vad package or the local torch hub cache. Install 'silero-vad' or pass silero_onnx_model_path.
+2026-08-13 23:17:22.603 - RealTimeSTT: realtimestt - DEBUG - Silero VAD auto backend raw_onnx unavailable
+Traceback (most recent call last):
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 176, in _create_auto_vad
+    return _create_raw_onnx_vad(
+        model_name,
+    ...<4 lines>...
+        chunk_samples,
+    )
+  File "C:\Users\USER\AppData\Roaming\Python\Python313\site-packages\RealtimeSTT\core\silero_vad.py", line 225, in _create_raw_onnx_vad
+    raise SileroVadError(
+    ...<3 lines>...
+    )
+RealtimeSTT.core.silero_vad.SileroVadError: Could not find silero_vad.onnx in the installed silero_vad package or the local torch hub cache. Install 'silero-vad' or pass silero_onnx_model_path.
+2026-08-13 23:19:53.299 - RealTimeSTT: realtimestt - DEBUG - Silero VAD voice activity detection engine initialized successfully with backend pytorch_cpu
+2026-08-13 23:19:53.432 - RealTimeSTT: realtimestt - DEBUG - Starting realtime worker
+2026-08-13 23:19:53.432 - RealTimeSTT: realtimestt - DEBUG - Waiting for main transcription model to start
+2026-08-13 23:19:53.432 - RealTimeSTT: realtimestt - DEBUG - Realtime transcription disabled; realtime worker exits
+2026-08-13 23:19:53.432 - RealTimeSTT: realtimestt - WARNING - Audio queue size exceeds latency limit. Current size: 4567. Discarding old audio chunks.
+2026-08-13 23:19:53.433 - RealTimeSTT: realtimestt - DEBUG - Main transcription model ready
+2026-08-13 23:19:53.433 - RealTimeSTT: realtimestt - DEBUG - RealtimeSTT initialization completed successfully
+2026-08-13 23:20:00.895 - RealTimeSTT: realtimestt - INFO - Setting listen time
+2026-08-13 23:20:00.895 - RealTimeSTT: realtimestt - INFO - State changed from 'inactive' to 'listening'
+2026-08-13 23:20:00.904 - RealTimeSTT: realtimestt - DEBUG - Waiting for recording start
+2026-08-13 23:20:02.296 - RealTimeSTT: realtimestt - INFO - voice activity detected
+2026-08-13 23:20:02.296 - RealTimeSTT: realtimestt - INFO - recording started
+2026-08-13 23:20:02.296 - RealTimeSTT: realtimestt - INFO - State changed from 'listening' to 'recording'
+2026-08-13 23:20:02.296 - RealTimeSTT: realtimestt - DEBUG - Waiting for recording stop
+2026-08-13 23:20:06.706 - RealTimeSTT: realtimestt - INFO - recording stopped
+2026-08-13 23:20:06.709 - RealTimeSTT: realtimestt - DEBUG - No samples removed, final audio length: 87040
+2026-08-13 23:20:06.710 - RealTimeSTT: realtimestt - INFO - State changed from 'recording' to 'inactive'
+2026-08-13 23:20:06.738 - RealTimeSTT: realtimestt - INFO - State changed from 'inactive' to 'transcribing'
+2026-08-13 23:20:06.740 - RealTimeSTT: realtimestt - DEBUG - Adding transcription request, no early transcription started
+2026-08-13 23:20:06.741 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:20:06.854 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:20:06.964 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:20:07.074 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:20:07.143 - RealTimeSTT: realtimestt - INFO - State changed from 'transcribing' to 'inactive'
+2026-08-13 23:20:07.150 - RealTimeSTT: realtimestt - DEBUG - Model tiny.en completed transcription in 0.41 seconds
+2026-08-13 23:22:30.066 - RealTimeSTT: realtimestt - INFO - voice activity detected
+2026-08-13 23:22:30.066 - RealTimeSTT: realtimestt - INFO - recording started
+2026-08-13 23:22:30.066 - RealTimeSTT: realtimestt - INFO - State changed from 'inactive' to 'recording'
+2026-08-13 23:22:31.226 - RealTimeSTT: realtimestt - INFO - recording stopped
+2026-08-13 23:22:33.586 - RealTimeSTT: realtimestt - INFO - voice activity detected
+2026-08-13 23:22:33.586 - RealTimeSTT: realtimestt - INFO - recording started
+2026-08-13 23:22:36.916 - RealTimeSTT: realtimestt - INFO - recording stopped
+2026-08-13 23:22:56.185 - RealTimeSTT: realtimestt - INFO - voice activity detected
+2026-08-13 23:22:56.186 - RealTimeSTT: realtimestt - INFO - recording started
+2026-08-13 23:22:57.336 - RealTimeSTT: realtimestt - INFO - recording stopped
+2026-08-13 23:23:30.569 - RealTimeSTT: realtimestt - INFO - Starting RealTimeSTT
+2026-08-13 23:23:30.577 - RealTimeSTT: realtimestt - INFO - Initializing audio recording (creating pyAudio input stream, sample rate: 16000 buffer size: 512
+2026-08-13 23:23:30.582 - RealTimeSTT: realtimestt - INFO - Initializing WebRTC voice with Sensitivity 3
+2026-08-13 23:23:30.582 - RealTimeSTT: realtimestt - DEBUG - WebRTC VAD voice activity detection engine initialized successfully
+2026-08-13 23:23:30.684 - RealTimeSTT: realtimestt - DEBUG - Silero VAD voice activity detection engine initialized successfully with backend raw_onnx_ifless
+2026-08-13 23:23:30.686 - RealTimeSTT: realtimestt - DEBUG - Starting realtime worker
+2026-08-13 23:23:30.687 - RealTimeSTT: realtimestt - DEBUG - Waiting for main transcription model to start
+2026-08-13 23:23:30.687 - RealTimeSTT: realtimestt - DEBUG - Realtime transcription disabled; realtime worker exits
+2026-08-13 23:23:36.204 - RealTimeSTT: realtimestt - DEBUG - Main transcription model ready
+2026-08-13 23:23:36.205 - RealTimeSTT: realtimestt - DEBUG - RealtimeSTT initialization completed successfully
+2026-08-13 23:23:43.411 - RealTimeSTT: realtimestt - INFO - Setting listen time
+2026-08-13 23:23:43.412 - RealTimeSTT: realtimestt - INFO - State changed from 'inactive' to 'listening'
+2026-08-13 23:23:43.414 - RealTimeSTT: realtimestt - DEBUG - Waiting for recording start
+2026-08-13 23:23:47.973 - RealTimeSTT: realtimestt - INFO - voice activity detected
+2026-08-13 23:23:47.974 - RealTimeSTT: realtimestt - INFO - recording started
+2026-08-13 23:23:47.974 - RealTimeSTT: realtimestt - INFO - State changed from 'listening' to 'recording'
+2026-08-13 23:23:47.974 - RealTimeSTT: realtimestt - DEBUG - Waiting for recording stop
+2026-08-13 23:23:49.124 - RealTimeSTT: realtimestt - INFO - recording stopped
+2026-08-13 23:23:49.125 - RealTimeSTT: realtimestt - DEBUG - No samples removed, final audio length: 34816
+2026-08-13 23:23:49.125 - RealTimeSTT: realtimestt - INFO - State changed from 'recording' to 'inactive'
+2026-08-13 23:23:49.188 - RealTimeSTT: realtimestt - INFO - State changed from 'inactive' to 'transcribing'
+2026-08-13 23:23:49.189 - RealTimeSTT: realtimestt - DEBUG - Adding transcription request, no early transcription started
+2026-08-13 23:23:49.190 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:23:49.303 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:23:49.414 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:23:49.523 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:23:49.536 - RealTimeSTT: realtimestt - INFO - State changed from 'transcribing' to 'inactive'
+2026-08-13 23:23:49.549 - RealTimeSTT: realtimestt - DEBUG - Model tiny.en completed transcription in 0.36 seconds
+2026-08-13 23:24:16.276 - RealTimeSTT: realtimestt - INFO - Starting RealTimeSTT
+2026-08-13 23:24:16.285 - RealTimeSTT: realtimestt - INFO - Initializing audio recording (creating pyAudio input stream, sample rate: 16000 buffer size: 512
+2026-08-13 23:24:16.289 - RealTimeSTT: realtimestt - INFO - Initializing WebRTC voice with Sensitivity 3
+2026-08-13 23:24:16.289 - RealTimeSTT: realtimestt - DEBUG - WebRTC VAD voice activity detection engine initialized successfully
+2026-08-13 23:24:16.390 - RealTimeSTT: realtimestt - DEBUG - Silero VAD voice activity detection engine initialized successfully with backend raw_onnx_ifless
+2026-08-13 23:24:16.392 - RealTimeSTT: realtimestt - DEBUG - Starting realtime worker
+2026-08-13 23:24:16.392 - RealTimeSTT: realtimestt - DEBUG - Waiting for main transcription model to start
+2026-08-13 23:24:16.392 - RealTimeSTT: realtimestt - DEBUG - Realtime transcription disabled; realtime worker exits
+2026-08-13 23:24:21.971 - RealTimeSTT: realtimestt - DEBUG - Main transcription model ready
+2026-08-13 23:24:21.971 - RealTimeSTT: realtimestt - DEBUG - RealtimeSTT initialization completed successfully
+2026-08-13 23:24:29.175 - RealTimeSTT: realtimestt - INFO - Setting listen time
+2026-08-13 23:24:29.175 - RealTimeSTT: realtimestt - INFO - State changed from 'inactive' to 'listening'
+2026-08-13 23:24:29.177 - RealTimeSTT: realtimestt - DEBUG - Waiting for recording start
+2026-08-13 23:24:30.941 - RealTimeSTT: realtimestt - INFO - voice activity detected
+2026-08-13 23:24:30.941 - RealTimeSTT: realtimestt - INFO - recording started
+2026-08-13 23:24:30.942 - RealTimeSTT: realtimestt - INFO - State changed from 'listening' to 'recording'
+2026-08-13 23:24:30.942 - RealTimeSTT: realtimestt - DEBUG - Waiting for recording stop
+2026-08-13 23:24:32.921 - RealTimeSTT: realtimestt - INFO - recording stopped
+2026-08-13 23:24:32.923 - RealTimeSTT: realtimestt - DEBUG - No samples removed, final audio length: 48128
+2026-08-13 23:24:32.924 - RealTimeSTT: realtimestt - INFO - State changed from 'recording' to 'inactive'
+2026-08-13 23:24:32.997 - RealTimeSTT: realtimestt - INFO - State changed from 'inactive' to 'transcribing'
+2026-08-13 23:24:32.999 - RealTimeSTT: realtimestt - DEBUG - Adding transcription request, no early transcription started
+2026-08-13 23:24:33.001 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:24:33.106 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:24:33.212 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:24:33.322 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:24:33.354 - RealTimeSTT: realtimestt - INFO - State changed from 'transcribing' to 'inactive'
+2026-08-13 23:24:33.357 - RealTimeSTT: realtimestt - DEBUG - Model tiny.en completed transcription in 0.36 seconds
+2026-08-13 23:24:33.631 - RealTimeSTT: realtimestt - INFO - voice activity detected
+2026-08-13 23:24:33.631 - RealTimeSTT: realtimestt - INFO - recording started
+2026-08-13 23:24:33.631 - RealTimeSTT: realtimestt - INFO - State changed from 'inactive' to 'recording'
+2026-08-13 23:24:40.351 - RealTimeSTT: realtimestt - INFO - recording stopped
+2026-08-13 23:30:18.660 - RealTimeSTT: realtimestt - INFO - Starting RealTimeSTT
+2026-08-13 23:30:18.668 - RealTimeSTT: realtimestt - INFO - Initializing audio recording (creating pyAudio input stream, sample rate: 16000 buffer size: 512
+2026-08-13 23:30:18.673 - RealTimeSTT: realtimestt - INFO - Initializing WebRTC voice with Sensitivity 3
+2026-08-13 23:30:18.673 - RealTimeSTT: realtimestt - DEBUG - WebRTC VAD voice activity detection engine initialized successfully
+2026-08-13 23:30:18.779 - RealTimeSTT: realtimestt - DEBUG - Silero VAD voice activity detection engine initialized successfully with backend raw_onnx_ifless
+2026-08-13 23:30:18.781 - RealTimeSTT: realtimestt - DEBUG - Starting realtime worker
+2026-08-13 23:30:18.781 - RealTimeSTT: realtimestt - DEBUG - Waiting for main transcription model to start
+2026-08-13 23:30:18.781 - RealTimeSTT: realtimestt - DEBUG - Realtime transcription disabled; realtime worker exits
+2026-08-13 23:30:24.276 - RealTimeSTT: realtimestt - DEBUG - Main transcription model ready
+2026-08-13 23:30:24.277 - RealTimeSTT: realtimestt - DEBUG - RealtimeSTT initialization completed successfully
+2026-08-13 23:30:31.475 - RealTimeSTT: realtimestt - INFO - Setting listen time
+2026-08-13 23:30:31.476 - RealTimeSTT: realtimestt - INFO - State changed from 'inactive' to 'listening'
+2026-08-13 23:30:31.477 - RealTimeSTT: realtimestt - DEBUG - Waiting for recording start
+2026-08-13 23:30:32.778 - RealTimeSTT: realtimestt - INFO - voice activity detected
+2026-08-13 23:30:32.778 - RealTimeSTT: realtimestt - INFO - recording started
+2026-08-13 23:30:32.778 - RealTimeSTT: realtimestt - INFO - State changed from 'listening' to 'recording'
+2026-08-13 23:30:32.779 - RealTimeSTT: realtimestt - DEBUG - Waiting for recording stop
+2026-08-13 23:30:38.599 - RealTimeSTT: realtimestt - INFO - recording stopped
+2026-08-13 23:30:38.602 - RealTimeSTT: realtimestt - DEBUG - No samples removed, final audio length: 109568
+2026-08-13 23:30:38.603 - RealTimeSTT: realtimestt - INFO - State changed from 'recording' to 'inactive'
+2026-08-13 23:30:38.628 - RealTimeSTT: realtimestt - INFO - State changed from 'inactive' to 'transcribing'
+2026-08-13 23:30:38.630 - RealTimeSTT: realtimestt - DEBUG - Adding transcription request, no early transcription started
+2026-08-13 23:30:38.638 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:30:38.741 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:30:38.850 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:30:38.960 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:30:39.070 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:30:39.107 - RealTimeSTT: realtimestt - INFO - State changed from 'transcribing' to 'inactive'
+2026-08-13 23:30:39.141 - RealTimeSTT: realtimestt - DEBUG - Model tiny.en completed transcription in 0.51 seconds
+2026-08-13 23:30:59.918 - RealTimeSTT: realtimestt - INFO - Starting RealTimeSTT
+2026-08-13 23:30:59.926 - RealTimeSTT: realtimestt - INFO - Initializing audio recording (creating pyAudio input stream, sample rate: 16000 buffer size: 512
+2026-08-13 23:30:59.931 - RealTimeSTT: realtimestt - INFO - Initializing WebRTC voice with Sensitivity 3
+2026-08-13 23:30:59.931 - RealTimeSTT: realtimestt - DEBUG - WebRTC VAD voice activity detection engine initialized successfully
+2026-08-13 23:31:00.030 - RealTimeSTT: realtimestt - DEBUG - Silero VAD voice activity detection engine initialized successfully with backend raw_onnx_ifless
+2026-08-13 23:31:00.032 - RealTimeSTT: realtimestt - DEBUG - Starting realtime worker
+2026-08-13 23:31:00.033 - RealTimeSTT: realtimestt - DEBUG - Waiting for main transcription model to start
+2026-08-13 23:31:00.033 - RealTimeSTT: realtimestt - DEBUG - Realtime transcription disabled; realtime worker exits
+2026-08-13 23:31:05.529 - RealTimeSTT: realtimestt - DEBUG - Main transcription model ready
+2026-08-13 23:31:05.529 - RealTimeSTT: realtimestt - DEBUG - RealtimeSTT initialization completed successfully
+2026-08-13 23:31:12.691 - RealTimeSTT: realtimestt - INFO - Setting listen time
+2026-08-13 23:31:12.691 - RealTimeSTT: realtimestt - INFO - State changed from 'inactive' to 'listening'
+2026-08-13 23:31:12.693 - RealTimeSTT: realtimestt - DEBUG - Waiting for recording start
+2026-08-13 23:31:13.954 - RealTimeSTT: realtimestt - INFO - voice activity detected
+2026-08-13 23:31:13.954 - RealTimeSTT: realtimestt - INFO - recording started
+2026-08-13 23:31:13.954 - RealTimeSTT: realtimestt - INFO - State changed from 'listening' to 'recording'
+2026-08-13 23:31:13.954 - RealTimeSTT: realtimestt - DEBUG - Waiting for recording stop
+2026-08-13 23:31:18.824 - RealTimeSTT: realtimestt - INFO - recording stopped
+2026-08-13 23:31:18.827 - RealTimeSTT: realtimestt - DEBUG - No samples removed, final audio length: 94208
+2026-08-13 23:31:18.827 - RealTimeSTT: realtimestt - INFO - State changed from 'recording' to 'inactive'
+2026-08-13 23:31:18.834 - RealTimeSTT: realtimestt - INFO - State changed from 'inactive' to 'transcribing'
+2026-08-13 23:31:18.836 - RealTimeSTT: realtimestt - DEBUG - Adding transcription request, no early transcription started
+2026-08-13 23:31:18.838 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:31:18.943 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:31:19.053 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:31:19.163 - RealTimeSTT: realtimestt - DEBUG - Receive from parent_transcription_pipe after sendiung transcription request, transcribe_count: 1
+2026-08-13 23:31:19.241 - RealTimeSTT: realtimestt - INFO - State changed from 'transcribing' to 'inactive'
+2026-08-13 23:31:19.246 - RealTimeSTT: realtimestt - DEBUG - Model tiny.en completed transcription in 0.41 seconds
+2026-08-13 23:31:34.184 - RealTimeSTT: realtimestt - INFO - voice activity detected
+2026-08-13 23:31:34.184 - RealTimeSTT: realtimestt - INFO - recording started
+2026-08-13 23:31:34.184 - RealTimeSTT: realtimestt - INFO - State changed from 'inactive' to 'recording'
+2026-08-13 23:31:41.734 - RealTimeSTT: realtimestt - INFO - recording stopped
+2026-08-13 23:31:42.884 - RealTimeSTT: realtimestt - INFO - voice activity detected
+2026-08-13 23:31:42.884 - RealTimeSTT: realtimestt - INFO - recording started
+2026-08-13 23:31:45.064 - RealTimeSTT: realtimestt - INFO - recording stopped
+2026-08-13 23:32:07.273 - RealTimeSTT: realtimestt - INFO - voice activity detected
+2026-08-13 23:32:07.274 - RealTimeSTT: realtimestt - INFO - recording started
+2026-08-13 23:32:10.854 - RealTimeSTT: realtimestt - INFO - recording stopped
