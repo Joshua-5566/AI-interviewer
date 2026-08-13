@@ -34,7 +34,6 @@ st.caption("由 Gemini API 驅動的互動式面試系統")
 with st.sidebar:
     st.header("⚙️ 面試設定")
 
-    # 嘗試多種管道讀取 API Key
     default_key = ""
     try:
         if "GEMINI_API_KEY" in st.secrets:
@@ -58,14 +57,15 @@ if not api_key:
     st.warning("⚠️ 請在左側輸入你的 Gemini API Key 以開始面試。")
     st.stop()
 
-# 3. 初始化 Session State 對話
+# 3. 初始化並常駐 Client 與 Chat Session
+if "client" not in st.session_state:
+    st.session_state.client = genai.Client(api_key=api_key)
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "chat_initialized" not in st.session_state:
     try:
-        client = genai.Client(api_key=api_key)
-
         jd_content = ""
         if uploaded_pdf:
             jd_content = extract_jd_text(uploaded_pdf)
@@ -84,8 +84,8 @@ if "chat_initialized" not in st.session_state:
         3. 每次只問一個具深度且相關的追問，保持語氣自然流暢。
         """
 
-        # 使用最穩定的模型別名
-        st.session_state.chat = client.chats.create(
+        # 使用存放在 session_state 裡的 client 建立對話
+        st.session_state.chat = st.session_state.client.chats.create(
             model="gemini-flash-latest",
             config=types.GenerateContentConfig(
                 system_instruction=system_prompt,
@@ -126,15 +126,14 @@ elif user_audio:
     )
 
 if user_payload:
-    # 顯示使用者發送的內容
+    # 記錄使用者訊息
     if isinstance(user_payload, str):
         st.session_state.messages.append({"role": "user", "content": user_payload})
     else:
         st.session_state.messages.append({"role": "user", "content": "🎙️ [發送了語音回答]"})
 
-    # 送出給 Gemini
+    # 傳送給 Gemini 並取得回應
     try:
-        client = genai.Client(api_key=api_key)
         with st.chat_message("assistant"):
             with st.spinner("面試官思考中..."):
                 response = st.session_state.chat.send_message(user_payload)
