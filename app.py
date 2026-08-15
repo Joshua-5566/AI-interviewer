@@ -28,9 +28,9 @@ def extract_jd_text(pdf_file) -> str:
 
 
 st.title("🎙️ AI 技術面試官")
-st.caption("由 Gemini API 驅動的互動式面試系統")
+st.caption("由 Gemini API 驅動的互動式技術面試系統")
 
-# 2. 安全讀取 Secrets / API Key
+# 2. 側邊欄設定（包含結束面試按鈕）
 with st.sidebar:
     st.header("⚙️ 面試設定")
 
@@ -48,21 +48,29 @@ with st.sidebar:
     target_role = st.text_input("面試職位", value="初級軟體工程師 (Junior Software Engineer)")
     uploaded_pdf = st.file_uploader("上傳 Job Description (PDF)", type=["pdf"])
 
-    if st.button("🔄 重置 / 重新開始面試"):
-        st.session_state.clear()
-        st.rerun()
+    # 左右並排放置兩個按鈕
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("🔄 重置面試", use_container_width=True):
+            st.session_state.clear()
+            st.rerun()
+    with col2:
+        finish_interview = st.button("📊 結束面試", use_container_width=True)
 
 # 檢查是否有 API Key
 if not api_key:
     st.warning("⚠️ 請在左側輸入你的 Gemini API Key 以開始面試。")
     st.stop()
 
-# 3. 初始化並常駐 Client 與 Chat Session
+# 3. 初始化 Client 與 Session State
 if "client" not in st.session_state:
     st.session_state.client = genai.Client(api_key=api_key)
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
+
+if "interview_report" not in st.session_state:
+    st.session_state.interview_report = None
 
 if "chat_initialized" not in st.session_state:
     try:
@@ -80,11 +88,10 @@ if "chat_initialized" not in st.session_state:
 
         規則：
         1. 請使用英文進行面試發問。
-        2. 對候選人的回答進行簡短評價（評估是否具備 STAR 原則：Situation, Task, Action, Result）。
-        3. 每次只問一個具深度且相關的追問，保持語氣自然流暢。
+        2. 針對候選人的回答進行簡短評價（特別關注是否符合 STAR 原則：Situation, Task, Action, Result）。
+        3. 每次只提出一個具深度且連貫的技術追問，語氣專業且自然。
         """
 
-        # 使用存放在 session_state 裡的 client 建立對話
         st.session_state.chat = st.session_state.client.chats.create(
             model="gemini-flash-latest",
             config=types.GenerateContentConfig(
@@ -104,12 +111,47 @@ if "chat_initialized" not in st.session_state:
         st.error(f"❌ 初始化 Gemini 對話失敗: {e}")
         st.stop()
 
-# 4. 渲染對話紀錄
+# 4. 生成評估報告邏輯（點擊結束按鈕時觸發）
+if finish_interview:
+    if len(st.session_state.messages) <= 1:
+        st.sidebar.warning("⚠️ 請先回答至少一個問題再結束面試！")
+    else:
+        with st.spinner("🔍 正在根據面試對話與 STAR 架構生成詳細評估報告..."):
+            try:
+                report_prompt = """
+                你現在是資深技術面試主管。請根據剛才的所有面試問答紀錄，輸出結構化的【面試評估報告】。
+
+                請包含以下內容：
+                1. 綜合評分（STAR 原則評分 /10、技術深度評分 /10、溝通表達評分 /10）
+                2. 表現亮點（候選人回答得好的具體技術細節與情境架構）
+                3. 改進建議（哪些問題缺乏具體數據、缺少 Action 或結果不明確）
+                4. 推薦參考回答範例（挑選候選人回答最薄弱的一題，提供一段符合 STAR 原則的滿分示範）
+
+                請使用繁體中文清晰輸出，排版需整齊易讀。
+                """
+                eval_response = st.session_state.chat.send_message(report_prompt)
+                st.session_state.interview_report = eval_response.text
+            except Exception as e:
+                st.error(f"生成報告失敗: {e}")
+
+# 若已生成報告，顯示於網頁頂部
+if st.session_state.interview_report:
+    st.success("🎉 面試已結束！以下是你的專屬面試評估報告：")
+    st.markdown(st.session_state.interview_report)
+    st.download_button(
+        label="📥 下載面試評估報告 (Markdown)",
+        data=st.session_state.interview_report,
+        file_name="interview_report.md",
+        mime="text/markdown"
+    )
+    st.divider()
+
+# 5. 渲染對話紀錄
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
-# 5. 用戶輸入區
+# 6. 用戶輸入區
 st.divider()
 user_audio = st.audio_input("🎤 點擊進行語音回答（說完再點一次停止）")
 user_text = st.chat_input("或在此輸入你的英文回答...")
