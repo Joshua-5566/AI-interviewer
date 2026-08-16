@@ -1,4 +1,5 @@
 import os
+import time
 import streamlit as st
 from google import genai
 from google.genai import types
@@ -25,6 +26,44 @@ def extract_jd_text(pdf_file) -> str:
     except Exception as e:
         st.error(f"PDF 解析失敗: {e}")
         return ""
+
+
+# 具備自動指數退避重試與備援模型的生成函式
+def generate_report_with_retry(chat_session, client, prompt, max_retries=3):
+    """
+    遇到 503/429 暫態錯誤時自動延遲重試，若依然失敗則切換至備援模型
+    """
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = chat_session.send_message(prompt)
+            return response.text
+        except Exception as e:
+            err_str = str(e)
+            if "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str:
+                if attempt < max_retries:
+                    wait_time = attempt * 2  # 第1次等2秒，第2次等4秒
+                    time.sleep(wait_time)
+                    continue
+            break
+
+    # 備援模型列表
+    fallback_models = ["gemini-3.5-flash", "gemini-flash-lite-latest"]
+
+    # 組合完整對話歷史作為單次請求 Context
+    full_history = "\n".join([f"{m['role'].upper()}: {m['content']}" for m in st.session_state.messages])
+    composite_prompt = f"以下是完整的面試對話紀錄：\n{full_history}\n\n{prompt}"
+
+    for model_name in fallback_models:
+        try:
+            fallback_response = client.models.generate_content(
+                model=model_name,
+                contents=composite_prompt
+            )
+            return fallback_response.text
+        except Exception:
+            continue
+
+    raise RuntimeError("所有可用模型目前皆遭遇尖峰流量，請稍候 10 秒後再次點擊生成。")
 
 
 st.title("🎙️ AI 技術面試官")
@@ -111,12 +150,12 @@ if "chat_initialized" not in st.session_state:
         st.error(f"❌ 初始化 Gemini 對話失敗: {e}")
         st.stop()
 
-# 4. 生成評估報告邏輯（點擊結束按鈕時觸發）
+# 4. Evaluation Report Trigger (具備容錯與重試)
 if finish_interview:
     if len(st.session_state.messages) <= 1:
-        st.sidebar.warning("⚠️ 請先回答至少一個問題再結束面試！")
+        st.sidebar.warning("⚠️ 請先回答至少一個問題再結束面試。")
     else:
-        with st.spinner("🔍 正在根據面試對話與 STAR 架構生成詳細評估報告..."):
+        with st.spinner("🔍 正在分析面試對話並生成 STAR 評估報告（若遇尖峰將自動重試）..."):
             try:
                 report_prompt = """
                 你現在是資深技術面試主管。請根據剛才的所有面試問答紀錄，輸出結構化的【面試評估報告】。
@@ -129,10 +168,17 @@ if finish_interview:
 
                 請使用繁體中文清晰輸出，排版需整齊易讀。
                 """
-                eval_response = st.session_state.chat.send_message(report_prompt)
-                st.session_state.interview_report = eval_response.text
+
+                report_text = generate_report_with_retry(
+                    chat_session=st.session_state.chat,
+                    client=st.session_state.client,
+                    prompt=report_prompt,
+                    max_retries=3
+                )
+                st.session_state.interview_report = report_text
+                st.rerun()
             except Exception as e:
-                st.error(f"生成報告失敗: {e}")
+                st.error(f"❌ 生成報告失敗: {e}")
 
 # 若已生成報告，顯示於網頁頂部
 if st.session_state.interview_report:
