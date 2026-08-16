@@ -12,7 +12,6 @@ st.set_page_config(
     layout="centered"
 )
 
-
 # PDF 內文讀取函式
 def extract_jd_text(pdf_file) -> str:
     try:
@@ -27,49 +26,74 @@ def extract_jd_text(pdf_file) -> str:
         st.error(f"PDF 解析失敗: {e}")
         return ""
 
+# 備援模型清單（依優先順序嘗試）
+CANDIDATE_MODELS = [
+    "gemini-flash-latest",
+    "gemini-2.5-flash",
+    "gemini-3.5-flash",
+    "gemini-flash-lite-latest"
+]
 
-# 具備自動指數退避重試與備援模型的生成函式
-def generate_report_with_retry(chat_session, client, prompt, max_retries=3):
-    """
-    遇到 503/429 暫態錯誤時自動延遲重試，若依然失敗則切換至備援模型
-    """
-    for attempt in range(1, max_retries + 1):
+# 具備自動重試與模型備援的初始化函式
+def initialize_chat_with_fallback(client, system_prompt, init_message):
+    last_error = None
+    for model_name in CANDIDATE_MODELS:
+        for attempt in range(1, 3):
+            try:
+                chat = client.chats.create(
+                    model=model_name,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_prompt,
+                        temperature=0.7,
+                    ),
+                )
+                response = chat.send_message(init_message)
+                return chat, response.text, model_name
+            except Exception as e:
+                last_error = e
+                err_str = str(e)
+                if "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str:
+                    time.sleep(1.5 * attempt)
+                    continue
+                break
+    raise last_error
+
+# 具備自動重試與模型備援的報告生成函式
+def generate_report_with_fallback(chat_session, client, prompt, active_model):
+    # 優先嘗試當前 session
+    for attempt in range(1, 3):
         try:
             response = chat_session.send_message(prompt)
             return response.text
         except Exception as e:
             err_str = str(e)
             if "503" in err_str or "UNAVAILABLE" in err_str or "429" in err_str:
-                if attempt < max_retries:
-                    wait_time = attempt * 2  # 第1次等2秒，第2次等4秒
-                    time.sleep(wait_time)
-                    continue
+                time.sleep(2 * attempt)
+                continue
             break
 
-    # 備援模型列表
-    fallback_models = ["gemini-3.5-flash", "gemini-flash-lite-latest"]
-
-    # 組合完整對話歷史作為單次請求 Context
+    # 若當前 session 失敗，組合歷史紀錄並切換其他模型生成
     full_history = "\n".join([f"{m['role'].upper()}: {m['content']}" for m in st.session_state.messages])
     composite_prompt = f"以下是完整的面試對話紀錄：\n{full_history}\n\n{prompt}"
 
-    for model_name in fallback_models:
+    for model_name in CANDIDATE_MODELS:
+        if model_name == active_model:
+            continue
         try:
-            fallback_response = client.models.generate_content(
+            fallback_resp = client.models.generate_content(
                 model=model_name,
                 contents=composite_prompt
             )
-            return fallback_response.text
+            return fallback_resp.text
         except Exception:
             continue
 
-    raise RuntimeError("所有可用模型目前皆遭遇尖峰流量，請稍候 10 秒後再次點擊生成。")
-
+    raise RuntimeError("所有可用模型目前皆遭遇尖峰流量，請稍候 10 秒後再次點擊。")
 
 st.title("🎙️ AI 技術面試官")
 st.caption("由 Gemini API 驅動的互動式技術面試系統")
 
-# 2. 側邊欄設定（包含結束面試按鈕）
+# 2. 側邊欄設定
 with st.sidebar:
     st.header("⚙️ 面試設定")
 
@@ -87,7 +111,6 @@ with st.sidebar:
     target_role = st.text_input("面試職位", value="初級軟體工程師 (Junior Software Engineer)")
     uploaded_pdf = st.file_uploader("上傳 Job Description (PDF)", type=["pdf"])
 
-    # 左右並排放置兩個按鈕
     col1, col2 = st.columns(2)
     with col1:
         if st.button("🔄 重置面試", use_container_width=True):
@@ -96,7 +119,6 @@ with st.sidebar:
     with col2:
         finish_interview = st.button("📊 結束面試", use_container_width=True)
 
-# 檢查是否有 API Key
 if not api_key:
     st.warning("⚠️ 請在左側輸入你的 Gemini API Key 以開始面試。")
     st.stop()
@@ -110,6 +132,9 @@ if "messages" not in st.session_state:
 
 if "interview_report" not in st.session_state:
     st.session_state.interview_report = None
+
+if "active_model" not in st.session_state:
+    st.session_state.active_model = CANDIDATE_MODELS[0]
 
 if "chat_initialized" not in st.session_state:
     try:
@@ -131,26 +156,23 @@ if "chat_initialized" not in st.session_state:
         3. 每次只提出一個具深度且連貫的技術追問，語氣專業且自然。
         """
 
-        st.session_state.chat = st.session_state.client.chats.create(
-            model="gemini-flash-latest",
-            config=types.GenerateContentConfig(
-                system_instruction=system_prompt,
-                temperature=0.7,
-            ),
-        )
-
-        with st.spinner("AI 面試官正在準備第一個提問..."):
-            init_response = st.session_state.chat.send_message(
-                "Hello! Please introduce yourself briefly and ask the first technical interview question based on the role/JD."
+        with st.spinner("AI 面試官正在準備第一個提問（連線中）..."):
+            chat, first_question, used_model = initialize_chat_with_fallback(
+                client=st.session_state.client,
+                system_prompt=system_prompt,
+                init_message="Hello! Please introduce yourself briefly and ask the first technical interview question based on the role/JD."
             )
-            st.session_state.messages.append({"role": "assistant", "content": init_response.text})
+            st.session_state.chat = chat
+            st.session_state.active_model = used_model
+            st.session_state.messages.append({"role": "assistant", "content": first_question})
             st.session_state.chat_initialized = True
 
     except Exception as e:
         st.error(f"❌ 初始化 Gemini 對話失敗: {e}")
+        st.info("💡 提示：Google 伺服器目前流量較大，請點擊左側「🔄 重置面試」重試。")
         st.stop()
 
-# 4. Evaluation Report Trigger (具備容錯與重試)
+# 4. 結束面試並生成評估報告
 if finish_interview:
     if len(st.session_state.messages) <= 1:
         st.sidebar.warning("⚠️ 請先回答至少一個問題再結束面試。")
@@ -169,18 +191,18 @@ if finish_interview:
                 請使用繁體中文清晰輸出，排版需整齊易讀。
                 """
 
-                report_text = generate_report_with_retry(
+                report_text = generate_report_with_fallback(
                     chat_session=st.session_state.chat,
                     client=st.session_state.client,
                     prompt=report_prompt,
-                    max_retries=3
+                    active_model=st.session_state.active_model
                 )
                 st.session_state.interview_report = report_text
                 st.rerun()
             except Exception as e:
                 st.error(f"❌ 生成報告失敗: {e}")
 
-# 若已生成報告，顯示於網頁頂部
+# 顯示評估報告
 if st.session_state.interview_report:
     st.success("🎉 面試已結束！以下是你的專屬面試評估報告：")
     st.markdown(st.session_state.interview_report)
@@ -214,13 +236,11 @@ elif user_audio:
     )
 
 if user_payload:
-    # 記錄使用者訊息
     if isinstance(user_payload, str):
         st.session_state.messages.append({"role": "user", "content": user_payload})
     else:
         st.session_state.messages.append({"role": "user", "content": "🎙️ [發送了語音回答]"})
 
-    # 傳送給 Gemini 並取得回應
     try:
         with st.chat_message("assistant"):
             with st.spinner("面試官思考中..."):
