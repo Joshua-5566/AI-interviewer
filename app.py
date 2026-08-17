@@ -5,7 +5,6 @@ from google import genai
 from google.genai import types
 from pypdf import PdfReader
 
-# 1. Page Configuration
 st.set_page_config(
     page_title="AI Technical Interviewer",
     page_icon="🎙️",
@@ -13,20 +12,16 @@ st.set_page_config(
 )
 
 
-# ----------------------------------------------------
-# 2. Access Control Gate (Optional)
-# If APP_PASSWORD is in st.secrets, requires passcode.
-# ----------------------------------------------------
 def verify_access() -> bool:
     expected_pwd = st.secrets.get("APP_PASSWORD", "")
     if not expected_pwd:
-        return True  # Open access if no password configured in secrets
+        return True
 
     if st.session_state.get("authenticated", False):
         return True
 
     st.title("🔒 Restricted Access")
-    st.caption("Please enter the authorization passcode to access this interview system.")
+    st.caption("Please enter the authorization passcode to access this system.")
 
     def validate_password():
         if st.session_state.get("passcode_input") == expected_pwd:
@@ -43,7 +38,7 @@ def verify_access() -> bool:
     )
 
     if "authenticated" in st.session_state and not st.session_state["authenticated"]:
-        st.error("❌ Incorrect passcode. Please check with administrator.")
+        st.error("Incorrect passcode.")
 
     return False
 
@@ -51,9 +46,6 @@ def verify_access() -> bool:
 if not verify_access():
     st.stop()
 
-# ----------------------------------------------------
-# 3. Model Definitions & Utilities
-# ----------------------------------------------------
 CANDIDATE_MODELS = [
     "gemini-flash-latest",
     "gemini-2.5-flash",
@@ -63,18 +55,16 @@ CANDIDATE_MODELS = [
 
 
 def extract_jd_text(pdf_file) -> str:
-    """Extracts raw text from an uploaded PDF stream."""
     try:
         reader = PdfReader(pdf_file)
         text = "\n".join([page.extract_text() or "" for page in reader.pages])
         return text.strip()
     except Exception as e:
-        st.sidebar.error(f"Failed to parse PDF: {e}")
+        st.sidebar.error(f"PDF error: {e}")
         return ""
 
 
 def initialize_chat_with_fallback(client, system_prompt, init_message):
-    """Initializes chat with auto-retry and model fallbacks for 503 spikes."""
     last_error = None
     for model_name in CANDIDATE_MODELS:
         for attempt in range(1, 3):
@@ -99,7 +89,6 @@ def initialize_chat_with_fallback(client, system_prompt, init_message):
 
 
 def generate_report_with_fallback(chat_session, client, prompt, active_model):
-    """Generates evaluation report with multi-model fallback."""
     for attempt in range(1, 3):
         try:
             response = chat_session.send_message(prompt)
@@ -111,7 +100,6 @@ def generate_report_with_fallback(chat_session, client, prompt, active_model):
                 continue
             break
 
-    # Fallback to standalone generation using alternative model
     full_history = "\n".join([f"{m['role'].upper()}: {m['content']}" for m in st.session_state.messages])
     composite_prompt = f"Transcript:\n{full_history}\n\nTask:\n{prompt}"
 
@@ -127,19 +115,15 @@ def generate_report_with_fallback(chat_session, client, prompt, active_model):
         except Exception:
             continue
 
-    raise RuntimeError("All models are experiencing high traffic. Please retry in 10 seconds.")
+    raise RuntimeError("All models busy.")
 
 
-# ----------------------------------------------------
-# 4. Header & Sidebar Setup
-# ----------------------------------------------------
 st.title("🎙️ AI Technical Interviewer")
-st.caption("Interactive Multi-modal Mock Interview System powered by Google Gemini")
+st.caption("Powered by Google Gemini")
 
 with st.sidebar:
-    st.header("⚙️ Settings")
+    st.header("Settings")
 
-    # Secure key resolution: Use server secret silently; otherwise prompt visitor
     server_key = ""
     if "GEMINI_API_KEY" in st.secrets:
         server_key = st.secrets["GEMINI_API_KEY"]
@@ -148,29 +132,26 @@ with st.sidebar:
 
     if server_key:
         api_key = server_key
-        st.success("🟢 API Key loaded from server environment")
+        st.success("API Key loaded from server")
     else:
-        api_key_input = st.text_input("Gemini API Key", type="password", placeholder="Enter your key...")
+        api_key_input = st.text_input("Gemini API Key", type="password", placeholder="Enter key...")
         api_key = api_key_input.strip() if api_key_input else ""
 
     target_role = st.text_input("Target Role", value="Junior Software Engineer")
-    uploaded_pdf = st.file_uploader("Upload Job Description (PDF)", type=["pdf"])
+    uploaded_pdf = st.file_uploader("Upload JD (PDF)", type=["pdf"])
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🔄 Reset", use_container_width=True):
+        if st.button("Reset", use_container_width=True):
             st.session_state.clear()
             st.rerun()
     with col2:
-        finish_interview = st.button("📊 Finish", use_container_width=True)
+        finish_interview = st.button("Finish", use_container_width=True)
 
 if not api_key:
-    st.warning("⚠️ Please provide a Gemini API Key in the sidebar to start.")
+    st.warning("Provide API Key to start.")
     st.stop()
 
-# ----------------------------------------------------
-# 5. Session State & Chat Initialization
-# ----------------------------------------------------
 if "client" not in st.session_state:
     st.session_state.client = genai.Client(api_key=api_key)
 
@@ -187,27 +168,23 @@ if "chat_initialized" not in st.session_state:
     try:
         jd_content = extract_jd_text(uploaded_pdf) if uploaded_pdf else ""
         if jd_content:
-            st.sidebar.success("✅ Job Description parsed successfully!")
+            st.sidebar.success("JD loaded")
 
-        # Token-optimized English System Prompt
         system_prompt = f"""
-You are a senior technical interviewer conducting a mock interview for the [{target_role}] position.
-
-JOB DESCRIPTION CONTEXT:
-{jd_content if jd_content else "Evaluate core software engineering fundamentals, API debugging, concurrency, and problem-solving."}
-
-RULES:
-1. Conduct the interview entirely in English.
-2. Keep responses concise (under 100 words).
-3. Ask exactly ONE technical follow-up question per turn.
-4. Evaluate responses against the STAR framework (Situation, Task, Action, Result).
+Role: Technical Interviewer for [{target_role}].
+Context: {jd_content if jd_content else "Evaluate software engineering and API debugging fundamentals."}
+Rules:
+1. English only.
+2. Under 100 words per response.
+3. Ask ONE follow-up question per turn.
+4. Use STAR framework.
 """
 
-        with st.spinner("Connecting and preparing the first question..."):
+        with st.spinner("Connecting..."):
             chat, first_q, used_model = initialize_chat_with_fallback(
                 client=st.session_state.client,
                 system_prompt=system_prompt,
-                init_message="Hello! Briefly introduce yourself and ask the opening technical question based on the role."
+                init_message="Hello! Briefly introduce yourself and ask the first technical question."
             )
             st.session_state.chat = chat
             st.session_state.active_model = used_model
@@ -215,32 +192,21 @@ RULES:
             st.session_state.chat_initialized = True
 
     except Exception as e:
-        st.error(f"❌ Initialization failed: {e}")
-        st.info("💡 Tip: Click '🔄 Reset' to retry connection.")
+        st.error(f"Error: {e}")
         st.stop()
 
-# ----------------------------------------------------
-# 6. Evaluation Report Generation
-# ----------------------------------------------------
 if finish_interview:
     if len(st.session_state.messages) <= 1:
-        st.sidebar.warning("⚠️ Please complete at least one answer before generating a report.")
+        st.sidebar.warning("Answer at least one question first.")
     else:
-        with st.spinner("Analyzing transcript and generating STAR scorecard..."):
+        with st.spinner("Generating report..."):
             try:
-                # Token-optimized report prompt (requests feedback in Traditional Chinese)
                 report_prompt = """
-You are a Senior Engineering Director evaluating this interview transcript.
-Generate a structured, professional evaluation report in Traditional Chinese (繁體中文).
-
-Format:
-1. **綜合評分 (Overall Scorecard)**:
-   - STAR 原則得分: /10
-   - 技術深度與系統思維: /10
-   - 溝通與條理性: /10
-2. **表現亮點 (Strengths)**: Specific technical actions/details well articulated.
-3. **改進建議 (Areas for Improvement)**: Missing metrics, unhandled edge cases, or vague points.
-4. **示範回答 (Exemplary STAR Benchmark)**: Provide a full-score STAR model answer for the candidate's weakest question.
+Generate an evaluation report in Traditional Chinese (繁體中文):
+1. Scorecard (STAR /10, Tech Depth /10, Communication /10)
+2. Strengths
+3. Areas for Improvement
+4. Exemplary STAR Model Answer
 """
                 report_text = generate_report_with_fallback(
                     chat_session=st.session_state.chat,
@@ -251,55 +217,45 @@ Format:
                 st.session_state.interview_report = report_text
                 st.rerun()
             except Exception as e:
-                st.error(f"❌ Failed to generate report: {e}")
+                st.error(f"Error: {e}")
 
 if st.session_state.interview_report:
-    st.success("🎉 Interview Completed! Here is your assessment report:")
+    st.success("Interview Complete:")
     st.markdown(st.session_state.interview_report)
     st.download_button(
-        label="📥 Download Report (Markdown)",
+        label="Download Report",
         data=st.session_state.interview_report,
-        file_name="interview_report.md",
+        file_name="report.md",
         mime="text/markdown"
     )
     st.divider()
 
-# ----------------------------------------------------
-# 7. Render Chat History
-# ----------------------------------------------------
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
-# ----------------------------------------------------
-# 8. User Interaction (Audio & Text)
-# ----------------------------------------------------
 st.divider()
-user_audio = st.audio_input("🎤 Record voice response (Click again to stop)")
-user_text = st.chat_input("Or type your technical answer in English...")
+user_audio = st.audio_input("Record voice")
+user_text = st.chat_input("Type answer...")
 
 user_payload = None
-
 if user_text:
     user_payload = user_text
 elif user_audio:
     audio_bytes = user_audio.read()
-    user_payload = types.Part.from_bytes(
-        data=audio_bytes,
-        mime_type="audio/wav"
-    )
+    user_payload = types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav")
 
 if user_payload:
     if isinstance(user_payload, str):
         st.session_state.messages.append({"role": "user", "content": user_payload})
     else:
-        st.session_state.messages.append({"role": "user", "content": "🎙️ [Sent voice response]"})
+        st.session_state.messages.append({"role": "user", "content": "🎙️ [Voice response]"})
 
     try:
         with st.chat_message("assistant"):
-            with st.spinner("Evaluating response..."):
+            with st.spinner("Evaluating..."):
                 response = st.session_state.chat.send_message(user_payload)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
                 st.rerun()
     except Exception as e:
-        st.error(f"Message dispatch error: {e}")
+        st.error(f"Error: {e}")
