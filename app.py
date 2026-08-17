@@ -11,48 +11,12 @@ st.set_page_config(
     layout="centered"
 )
 
-
-def verify_access() -> bool:
-    expected_pwd = st.secrets.get("APP_PASSWORD", "")
-    if not expected_pwd:
-        return True
-
-    if st.session_state.get("authenticated", False):
-        return True
-
-    st.title("🔒 Restricted Access")
-    st.caption("Please enter the authorization passcode to access this system.")
-
-    def validate_password():
-        if st.session_state.get("passcode_input") == expected_pwd:
-            st.session_state["authenticated"] = True
-        else:
-            st.session_state["authenticated"] = False
-
-    st.text_input(
-        "Passcode",
-        type="password",
-        key="passcode_input",
-        on_change=validate_password,
-        placeholder="Enter passcode..."
-    )
-
-    if "authenticated" in st.session_state and not st.session_state["authenticated"]:
-        st.error("Incorrect passcode.")
-
-    return False
-
-
-if not verify_access():
-    st.stop()
-
 CANDIDATE_MODELS = [
     "gemini-flash-latest",
     "gemini-2.5-flash",
     "gemini-3.5-flash",
     "gemini-flash-lite-latest"
 ]
-
 
 def extract_jd_text(pdf_file) -> str:
     try:
@@ -62,7 +26,6 @@ def extract_jd_text(pdf_file) -> str:
     except Exception as e:
         st.sidebar.error(f"PDF error: {e}")
         return ""
-
 
 def initialize_chat_with_fallback(client, system_prompt, init_message):
     last_error = None
@@ -86,7 +49,6 @@ def initialize_chat_with_fallback(client, system_prompt, init_message):
                     continue
                 break
     raise last_error
-
 
 def generate_report_with_fallback(chat_session, client, prompt, active_model):
     for attempt in range(1, 3):
@@ -117,25 +79,19 @@ def generate_report_with_fallback(chat_session, client, prompt, active_model):
 
     raise RuntimeError("All models busy.")
 
-
 st.title("🎙️ AI Technical Interviewer")
 st.caption("Powered by Google Gemini")
 
 with st.sidebar:
     st.header("Settings")
 
-    server_key = ""
-    if "GEMINI_API_KEY" in st.secrets:
-        server_key = st.secrets["GEMINI_API_KEY"]
-    elif "GEMINI_API_KEY" in os.environ:
-        server_key = os.environ["GEMINI_API_KEY"]
-
-    if server_key:
-        api_key = server_key
-        st.success("API Key loaded from server")
-    else:
-        api_key_input = st.text_input("Gemini API Key", type="password", placeholder="Enter key...")
-        api_key = api_key_input.strip() if api_key_input else ""
+    api_key_input = st.text_input(
+        "Gemini API Key",
+        type="password",
+        placeholder="Enter your Gemini API key..."
+    )
+    api_key = api_key_input.strip() if api_key_input else ""
+    st.markdown("[Get free API Key](https://aistudio.google.com/app/apikey)")
 
     target_role = st.text_input("Target Role", value="Junior Software Engineer")
     uploaded_pdf = st.file_uploader("Upload JD (PDF)", type=["pdf"])
@@ -149,11 +105,16 @@ with st.sidebar:
         finish_interview = st.button("Finish", use_container_width=True)
 
 if not api_key:
-    st.warning("Provide API Key to start.")
+    st.info("👈 Enter your Gemini API Key in the sidebar to begin.")
     st.stop()
 
-if "client" not in st.session_state:
+if "client" not in st.session_state or st.session_state.get("current_key") != api_key:
     st.session_state.client = genai.Client(api_key=api_key)
+    st.session_state.current_key = api_key
+    st.session_state.messages = []
+    st.session_state.interview_report = None
+    if "chat_initialized" in st.session_state:
+        del st.session_state["chat_initialized"]
 
 if "messages" not in st.session_state:
     st.session_state.messages = []
@@ -163,6 +124,9 @@ if "interview_report" not in st.session_state:
 
 if "active_model" not in st.session_state:
     st.session_state.active_model = CANDIDATE_MODELS[0]
+
+if "audio_key" not in st.session_state:
+    st.session_state.audio_key = 0
 
 if "chat_initialized" not in st.session_state:
     try:
@@ -235,7 +199,7 @@ for msg in st.session_state.messages:
         st.write(msg["content"])
 
 st.divider()
-user_audio = st.audio_input("Record voice")
+user_audio = st.audio_input("Record voice", key=f"audio_recorder_{st.session_state.audio_key}")
 user_text = st.chat_input("Type answer...")
 
 user_payload = None
@@ -243,7 +207,8 @@ if user_text:
     user_payload = user_text
 elif user_audio:
     audio_bytes = user_audio.read()
-    user_payload = types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav")
+    if audio_bytes:
+        user_payload = types.Part.from_bytes(data=audio_bytes, mime_type="audio/wav")
 
 if user_payload:
     if isinstance(user_payload, str):
@@ -256,6 +221,8 @@ if user_payload:
             with st.spinner("Evaluating..."):
                 response = st.session_state.chat.send_message(user_payload)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
+                if not isinstance(user_payload, str):
+                    st.session_state.audio_key += 1
                 st.rerun()
     except Exception as e:
         st.error(f"Error: {e}")
