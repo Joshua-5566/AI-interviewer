@@ -5,28 +5,55 @@ from google import genai
 from google.genai import types
 from pypdf import PdfReader
 
-# 1. 頁面基本配置
+# 1. Page Configuration
 st.set_page_config(
-    page_title="AI 語音技術面試官",
+    page_title="AI Technical Interviewer",
     page_icon="🎙️",
     layout="centered"
 )
 
-# PDF 內文讀取函式
-def extract_jd_text(pdf_file) -> str:
-    try:
-        reader = PdfReader(pdf_file)
-        text = ""
-        for page in reader.pages:
-            extracted = page.extract_text()
-            if extracted:
-                text += extracted + "\n"
-        return text.strip()
-    except Exception as e:
-        st.error(f"PDF 解析失敗: {e}")
-        return ""
 
-# 備援模型清單（依優先順序嘗試）
+# ----------------------------------------------------
+# 2. Access Control Gate (Optional)
+# If APP_PASSWORD is in st.secrets, requires passcode.
+# ----------------------------------------------------
+def verify_access() -> bool:
+    expected_pwd = st.secrets.get("APP_PASSWORD", "")
+    if not expected_pwd:
+        return True  # Open access if no password configured in secrets
+
+    if st.session_state.get("authenticated", False):
+        return True
+
+    st.title("🔒 Restricted Access")
+    st.caption("Please enter the authorization passcode to access this interview system.")
+
+    def validate_password():
+        if st.session_state.get("passcode_input") == expected_pwd:
+            st.session_state["authenticated"] = True
+        else:
+            st.session_state["authenticated"] = False
+
+    st.text_input(
+        "Passcode",
+        type="password",
+        key="passcode_input",
+        on_change=validate_password,
+        placeholder="Enter passcode..."
+    )
+
+    if "authenticated" in st.session_state and not st.session_state["authenticated"]:
+        st.error("❌ Incorrect passcode. Please check with administrator.")
+
+    return False
+
+
+if not verify_access():
+    st.stop()
+
+# ----------------------------------------------------
+# 3. Model Definitions & Utilities
+# ----------------------------------------------------
 CANDIDATE_MODELS = [
     "gemini-flash-latest",
     "gemini-2.5-flash",
@@ -34,8 +61,20 @@ CANDIDATE_MODELS = [
     "gemini-flash-lite-latest"
 ]
 
-# 具備自動重試與模型備援的初始化函式
+
+def extract_jd_text(pdf_file) -> str:
+    """Extracts raw text from an uploaded PDF stream."""
+    try:
+        reader = PdfReader(pdf_file)
+        text = "\n".join([page.extract_text() or "" for page in reader.pages])
+        return text.strip()
+    except Exception as e:
+        st.sidebar.error(f"Failed to parse PDF: {e}")
+        return ""
+
+
 def initialize_chat_with_fallback(client, system_prompt, init_message):
+    """Initializes chat with auto-retry and model fallbacks for 503 spikes."""
     last_error = None
     for model_name in CANDIDATE_MODELS:
         for attempt in range(1, 3):
@@ -58,9 +97,9 @@ def initialize_chat_with_fallback(client, system_prompt, init_message):
                 break
     raise last_error
 
-# 具備自動重試與模型備援的報告生成函式
+
 def generate_report_with_fallback(chat_session, client, prompt, active_model):
-    # 優先嘗試當前 session
+    """Generates evaluation report with multi-model fallback."""
     for attempt in range(1, 3):
         try:
             response = chat_session.send_message(prompt)
@@ -72,9 +111,9 @@ def generate_report_with_fallback(chat_session, client, prompt, active_model):
                 continue
             break
 
-    # 若當前 session 失敗，組合歷史紀錄並切換其他模型生成
+    # Fallback to standalone generation using alternative model
     full_history = "\n".join([f"{m['role'].upper()}: {m['content']}" for m in st.session_state.messages])
-    composite_prompt = f"以下是完整的面試對話紀錄：\n{full_history}\n\n{prompt}"
+    composite_prompt = f"Transcript:\n{full_history}\n\nTask:\n{prompt}"
 
     for model_name in CANDIDATE_MODELS:
         if model_name == active_model:
@@ -88,42 +127,50 @@ def generate_report_with_fallback(chat_session, client, prompt, active_model):
         except Exception:
             continue
 
-    raise RuntimeError("所有可用模型目前皆遭遇尖峰流量，請稍候 10 秒後再次點擊。")
+    raise RuntimeError("All models are experiencing high traffic. Please retry in 10 seconds.")
 
-st.title("🎙️ AI 技術面試官")
-st.caption("由 Gemini API 驅動的互動式技術面試系統")
 
-# 2. 側邊欄設定
+# ----------------------------------------------------
+# 4. Header & Sidebar Setup
+# ----------------------------------------------------
+st.title("🎙️ AI Technical Interviewer")
+st.caption("Interactive Multi-modal Mock Interview System powered by Google Gemini")
+
 with st.sidebar:
-    st.header("⚙️ 面試設定")
+    st.header("⚙️ Settings")
 
-    default_key = ""
-    try:
-        if "GEMINI_API_KEY" in st.secrets:
-            default_key = st.secrets["GEMINI_API_KEY"]
-    except Exception:
-        pass
+    # Secure key resolution: Use server secret silently; otherwise prompt visitor
+    server_key = ""
+    if "GEMINI_API_KEY" in st.secrets:
+        server_key = st.secrets["GEMINI_API_KEY"]
+    elif "GEMINI_API_KEY" in os.environ:
+        server_key = os.environ["GEMINI_API_KEY"]
 
-    if not default_key:
-        default_key = os.environ.get("GEMINI_API_KEY", "")
+    if server_key:
+        api_key = server_key
+        st.success("🟢 API Key loaded from server environment")
+    else:
+        api_key_input = st.text_input("Gemini API Key", type="password", placeholder="Enter your key...")
+        api_key = api_key_input.strip() if api_key_input else ""
 
-    api_key = st.text_input("Gemini API Key", value=default_key, type="password")
-    target_role = st.text_input("面試職位", value="初級軟體工程師 (Junior Software Engineer)")
-    uploaded_pdf = st.file_uploader("上傳 Job Description (PDF)", type=["pdf"])
+    target_role = st.text_input("Target Role", value="Junior Software Engineer")
+    uploaded_pdf = st.file_uploader("Upload Job Description (PDF)", type=["pdf"])
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("🔄 重置面試", use_container_width=True):
+        if st.button("🔄 Reset", use_container_width=True):
             st.session_state.clear()
             st.rerun()
     with col2:
-        finish_interview = st.button("📊 結束面試", use_container_width=True)
+        finish_interview = st.button("📊 Finish", use_container_width=True)
 
 if not api_key:
-    st.warning("⚠️ 請在左側輸入你的 Gemini API Key 以開始面試。")
+    st.warning("⚠️ Please provide a Gemini API Key in the sidebar to start.")
     st.stop()
 
-# 3. 初始化 Client 與 Session State
+# ----------------------------------------------------
+# 5. Session State & Chat Initialization
+# ----------------------------------------------------
 if "client" not in st.session_state:
     st.session_state.client = genai.Client(api_key=api_key)
 
@@ -138,59 +185,63 @@ if "active_model" not in st.session_state:
 
 if "chat_initialized" not in st.session_state:
     try:
-        jd_content = ""
-        if uploaded_pdf:
-            jd_content = extract_jd_text(uploaded_pdf)
-            st.sidebar.success("✅ 成功解析 Job Description PDF！")
+        jd_content = extract_jd_text(uploaded_pdf) if uploaded_pdf else ""
+        if jd_content:
+            st.sidebar.success("✅ Job Description parsed successfully!")
 
+        # Token-optimized English System Prompt
         system_prompt = f"""
-        你是一位針對【{target_role}】職位專業且嚴謹的技術面試官。
+You are a senior technical interviewer conducting a mock interview for the [{target_role}] position.
 
-        === 職缺描述 (Job Description) ===
-        {jd_content if jd_content else "針對一般軟體工程師基礎技術、系統設計與 STAR 原則進行考察。"}
-        =================================
+JOB DESCRIPTION CONTEXT:
+{jd_content if jd_content else "Evaluate core software engineering fundamentals, API debugging, concurrency, and problem-solving."}
 
-        規則：
-        1. 請使用英文進行面試發問。
-        2. 針對候選人的回答進行簡短評價（特別關注是否符合 STAR 原則：Situation, Task, Action, Result）。
-        3. 每次只提出一個具深度且連貫的技術追問，語氣專業且自然。
-        """
+RULES:
+1. Conduct the interview entirely in English.
+2. Keep responses concise (under 100 words).
+3. Ask exactly ONE technical follow-up question per turn.
+4. Evaluate responses against the STAR framework (Situation, Task, Action, Result).
+"""
 
-        with st.spinner("AI 面試官正在準備第一個提問（連線中）..."):
-            chat, first_question, used_model = initialize_chat_with_fallback(
+        with st.spinner("Connecting and preparing the first question..."):
+            chat, first_q, used_model = initialize_chat_with_fallback(
                 client=st.session_state.client,
                 system_prompt=system_prompt,
-                init_message="Hello! Please introduce yourself briefly and ask the first technical interview question based on the role/JD."
+                init_message="Hello! Briefly introduce yourself and ask the opening technical question based on the role."
             )
             st.session_state.chat = chat
             st.session_state.active_model = used_model
-            st.session_state.messages.append({"role": "assistant", "content": first_question})
+            st.session_state.messages.append({"role": "assistant", "content": first_q})
             st.session_state.chat_initialized = True
 
     except Exception as e:
-        st.error(f"❌ 初始化 Gemini 對話失敗: {e}")
-        st.info("💡 提示：Google 伺服器目前流量較大，請點擊左側「🔄 重置面試」重試。")
+        st.error(f"❌ Initialization failed: {e}")
+        st.info("💡 Tip: Click '🔄 Reset' to retry connection.")
         st.stop()
 
-# 4. 結束面試並生成評估報告
+# ----------------------------------------------------
+# 6. Evaluation Report Generation
+# ----------------------------------------------------
 if finish_interview:
     if len(st.session_state.messages) <= 1:
-        st.sidebar.warning("⚠️ 請先回答至少一個問題再結束面試。")
+        st.sidebar.warning("⚠️ Please complete at least one answer before generating a report.")
     else:
-        with st.spinner("🔍 正在分析面試對話並生成 STAR 評估報告（若遇尖峰將自動重試）..."):
+        with st.spinner("Analyzing transcript and generating STAR scorecard..."):
             try:
+                # Token-optimized report prompt (requests feedback in Traditional Chinese)
                 report_prompt = """
-                你現在是資深技術面試主管。請根據剛才的所有面試問答紀錄，輸出結構化的【面試評估報告】。
+You are a Senior Engineering Director evaluating this interview transcript.
+Generate a structured, professional evaluation report in Traditional Chinese (繁體中文).
 
-                請包含以下內容：
-                1. 綜合評分（STAR 原則評分 /10、技術深度評分 /10、溝通表達評分 /10）
-                2. 表現亮點（候選人回答得好的具體技術細節與情境架構）
-                3. 改進建議（哪些問題缺乏具體數據、缺少 Action 或結果不明確）
-                4. 推薦參考回答範例（挑選候選人回答最薄弱的一題，提供一段符合 STAR 原則的滿分示範）
-
-                請使用繁體中文清晰輸出，排版需整齊易讀。
-                """
-
+Format:
+1. **綜合評分 (Overall Scorecard)**:
+   - STAR 原則得分: /10
+   - 技術深度與系統思維: /10
+   - 溝通與條理性: /10
+2. **表現亮點 (Strengths)**: Specific technical actions/details well articulated.
+3. **改進建議 (Areas for Improvement)**: Missing metrics, unhandled edge cases, or vague points.
+4. **示範回答 (Exemplary STAR Benchmark)**: Provide a full-score STAR model answer for the candidate's weakest question.
+"""
                 report_text = generate_report_with_fallback(
                     chat_session=st.session_state.chat,
                     client=st.session_state.client,
@@ -200,29 +251,32 @@ if finish_interview:
                 st.session_state.interview_report = report_text
                 st.rerun()
             except Exception as e:
-                st.error(f"❌ 生成報告失敗: {e}")
+                st.error(f"❌ Failed to generate report: {e}")
 
-# 顯示評估報告
 if st.session_state.interview_report:
-    st.success("🎉 面試已結束！以下是你的專屬面試評估報告：")
+    st.success("🎉 Interview Completed! Here is your assessment report:")
     st.markdown(st.session_state.interview_report)
     st.download_button(
-        label="📥 下載面試評估報告 (Markdown)",
+        label="📥 Download Report (Markdown)",
         data=st.session_state.interview_report,
         file_name="interview_report.md",
         mime="text/markdown"
     )
     st.divider()
 
-# 5. 渲染對話紀錄
+# ----------------------------------------------------
+# 7. Render Chat History
+# ----------------------------------------------------
 for msg in st.session_state.messages:
     with st.chat_message(msg["role"]):
         st.write(msg["content"])
 
-# 6. 用戶輸入區
+# ----------------------------------------------------
+# 8. User Interaction (Audio & Text)
+# ----------------------------------------------------
 st.divider()
-user_audio = st.audio_input("🎤 點擊進行語音回答（說完再點一次停止）")
-user_text = st.chat_input("或在此輸入你的英文回答...")
+user_audio = st.audio_input("🎤 Record voice response (Click again to stop)")
+user_text = st.chat_input("Or type your technical answer in English...")
 
 user_payload = None
 
@@ -239,13 +293,13 @@ if user_payload:
     if isinstance(user_payload, str):
         st.session_state.messages.append({"role": "user", "content": user_payload})
     else:
-        st.session_state.messages.append({"role": "user", "content": "🎙️ [發送了語音回答]"})
+        st.session_state.messages.append({"role": "user", "content": "🎙️ [Sent voice response]"})
 
     try:
         with st.chat_message("assistant"):
-            with st.spinner("面試官思考中..."):
+            with st.spinner("Evaluating response..."):
                 response = st.session_state.chat.send_message(user_payload)
                 st.session_state.messages.append({"role": "assistant", "content": response.text})
                 st.rerun()
     except Exception as e:
-        st.error(f"發送訊息失敗: {e}")
+        st.error(f"Message dispatch error: {e}")
